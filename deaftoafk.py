@@ -7,7 +7,7 @@
 # Copyright (C) 2011 Natenom <natenom@googlemail.com>
 # All rights reserved.
 #
-# Antirec is based on the scripts onjoin.py, idlemove.py and seen.py
+# deaftoafk is based on the scripts onjoin.py, idlemove.py and seen.py
 # (made by dd0t) from the Mumble Moderator project , available at
 # http://gitorious.org/mumble-scripts/mumo
 #
