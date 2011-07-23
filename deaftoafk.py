@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-# Last edited 2011-07-22
-# Version 0.0.2
+# Last edited 2011-07-23
+# Version 0.0.3
 
 # Copyright (C) 2011 Stefan Hacker <dd0t@users.sourceforge.net>
 # Copyright (C) 2011 Natenom <natenom@googlemail.com>
 # All rights reserved.
 #
-# deaftoafk is based on the scripts onjoin.py, idlemove.py and seen.py
+# Antirec is based on the scripts onjoin.py, idlemove.py and seen.py
 # (made by dd0t) from the Mumble Moderator project , available at
 # http://gitorious.org/mumble-scripts/mumo
 #
@@ -53,8 +53,8 @@ class deaftoafk(MumoModule):
                                 ),
                                 lambda x: re.match('(all)|(server_\d+)', x):(                                
                                 ('idlechannel', int, 0),
-                                ('sessions_allowed', str, '/tmp/deaftoafk.sessions_'),
-                                ('state_before', str, '/tmp/deaftoafk.statebefore_')
+                                ('state_before_registered', str, '/tmp/deaftoafk.sbreg_'),
+                                ('state_before_unregistered', str, '/tmp/deaftoafk.sbunreg_')
                                 )
                     }
     
@@ -62,25 +62,36 @@ class deaftoafk(MumoModule):
         MumoModule.__init__(self, name, manager, configuration)
         self.murmur = manager.getMurmurModule()
         
-    def getStatebefore(self, serverid):
-        try:
+    def getStatebefore(self, userid, serverid):
+	try:
             scfg = getattr(self.cfg(), 'server_%d' % int(serverid))
         except AttributeError:
             scfg = self.cfg().all
+	if (userid==-1): #User not registered
+            filename=scfg.state_before_unregistered
+	else: #User is registered
+	    filename=scfg.state_before_registered
+
 	try:
-	    filehandle = open(scfg.state_before+str(serverid), 'rb')
+	    filehandle = open(filename+str(serverid), 'rb')
 	    statebefore=pickle.load(filehandle)
 	    filehandle.close()
 	except:
 	    statebefore={}
 	return statebefore
   
-    def writeStatebefore(self, value, serverid):
+    def writeStatebefore(self, userid, value, serverid):
         try:
             scfg = getattr(self.cfg(), 'server_%d' % int(serverid))
         except AttributeError:
             scfg = self.cfg().all
-	filehandle = open(scfg.state_before+str(serverid), 'wb')
+
+	if (userid==-1): #User not registered
+            filename=scfg.state_before_unregistered
+        else: #User is registered
+            filename=scfg.state_before_registered
+
+	filehandle = open(filename+str(serverid), 'wb')
 	pickle.dump(value, filehandle)
 	filehandle.close()
      
@@ -102,13 +113,22 @@ class deaftoafk(MumoModule):
     #
     
     def userTextMessage(self, server, user, message, current=None): pass
-    def userConnected(self, server, state, context = None): pass
+    def userConnected(self, server, state, context = None):
+	channel_before_afk=self.getStatebefore(state.userid, server.id())
+	#If user is registered and in afk list and not deaf: move back to previous channel and remove user from afk list.
+	if (state.userid>=1) and (state.userid in channel_before_afk) and (state.deaf==False):
+	    state.channel=channel_before_afk[state.userid]
+	    server.setState(state)
+	    del channel_before_afk[state.userid]
+	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
+
     def userDisconnected(self, server, state, context = None): 
-	channel_before_afk=self.getStatebefore(server.id())
+	channel_before_afk=self.getStatebefore(state.userid, server.id())
+	#Only remove from afk list if not registered
 	if (state.session in channel_before_afk):
 	    del channel_before_afk[state.session]
-	    self.writeStatebefore(channel_before_afk, server.id())
-	    self.log().debug("Removed session %s (%s) from idle list." % (state.session, state.name))
+	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
+	    self.log().debug("Removed session %s (%s) from idle list because unregistered." % (state.session, state.name))
 	    
     def userStateChanged(self, server, state, context = None):
         """Wer sich staub stellt, wird in AFK verschoben"""
@@ -116,22 +136,30 @@ class deaftoafk(MumoModule):
             scfg = getattr(self.cfg(), 'server_%d' % server.id())
         except AttributeError:
             scfg = self.cfg().all
-        
-	channel_before_afk=self.getStatebefore(server.id())
+       
+	channel_before_afk=self.getStatebefore(state.userid, server.id())
 
-        if (state.selfDeaf==True) and (state.session not in channel_before_afk):
-	    self.log().debug("Moving user %s from channelid %s into AFK." % (state.name, state.channel)) 
-	    channel_before_afk[state.session]=state.channel
+	if (state.userid==-1):
+	    tosave=state.session
+	else:
+	    tosave=state.userid
+
+        if (state.selfDeaf==True) and (tosave not in channel_before_afk):
+  	    channel_before_afk[tosave]=state.channel
+	
+	    self.log().debug("Moved user %s from channelid %s into AFK." % (state.name, state.channel)) 
+
 	    state.channel=scfg.idlechannel
 	    server.setState(state)
-  	    self.writeStatebefore(channel_before_afk, server.id())
+  	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
 
-	if (state.selfDeaf==False) and (state.session in channel_before_afk):
-	    self.log().debug("Removing session %s and moving user %s back into channelid %s." % (state.session, state.name, channel_before_afk[state.session]))
-   	    state.channel = channel_before_afk[state.session]
+	if (state.selfDeaf==False) and (tosave in channel_before_afk):
+	    self.log().debug("Moving user %s back into channelid %s." % (state.name, channel_before_afk[tosave]))
+   	    state.channel = channel_before_afk[tosave]
 	    server.setState(state)
-	    del channel_before_afk[state.session]
-	    self.writeStatebefore(channel_before_afk, server.id())
+            del channel_before_afk[tosave]
+
+	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
 
     def channelCreated(self, server, state, context = None): pass
     def channelRemoved(self, server, state, context = None): pass
