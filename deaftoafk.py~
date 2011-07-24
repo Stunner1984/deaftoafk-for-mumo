@@ -7,7 +7,7 @@
 # Copyright (C) 2011 Natenom <natenom@googlemail.com>
 # All rights reserved.
 #
-# This script is based on the scripts onjoin.py, idlemove.py and seen.py
+# Antirec is based on the scripts onjoin.py, idlemove.py and seen.py
 # (made by dd0t) from the Mumble Moderator project , available at
 # http://gitorious.org/mumble-scripts/mumo
 #
@@ -155,12 +155,8 @@ class deaftoafk(MumoModule):
 
 	if (state.selfDeaf==False) and (tosave in channel_before_afk):
 	    self.log().debug("Moving user %s back into channelid %s." % (state.name, channel_before_afk[tosave]))
-
-            #Only switch back to previous channel if user is still in AFK channel.
-	    if (state.channel==scfg.idlechannel):
-		state.channel = channel_before_afk[tosave]
-		server.setState(state)
-	    
+   	    state.channel = channel_before_afk[tosave]
+	    server.setState(state)
             del channel_before_afk[tosave]
 
 	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
