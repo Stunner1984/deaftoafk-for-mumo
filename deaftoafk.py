@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 # Last edited 2011-07-28
-# Version 0.0.4
+# Version 0.0.5
 
 # Copyright (C) 2011 Stefan Hacker <dd0t@users.sourceforge.net>
 # Copyright (C) 2011 Natenom <natenom@googlemail.com>
@@ -114,21 +114,28 @@ class deaftoafk(MumoModule):
     
     def userTextMessage(self, server, user, message, current=None): pass
     def userConnected(self, server, state, context = None):
-	channel_before_afk=self.getStatebefore(state.userid, server.id())
-	#If user is registered and in afk list and not deaf: move back to previous channel and remove user from afk list.
-	if (state.userid>=1) and (state.userid in channel_before_afk) and (state.deaf==False):
-	    state.channel=channel_before_afk[state.userid]
-	    server.setState(state)
-	    del channel_before_afk[state.userid]
-	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
+	if (state.userid>0): #User is registered
+	    userlist_state_before=self.getStatebefore(state.userid, server.id())
+	    
+	    #If user is registered and in afk list and not deaf: move back to previous channel and remove user from afk list.
+	    if (state.userid in userlist_state_before) and (state.deaf==False):
+		user=userlist_state_before[state.userid]
+		state.channel=user["channel"]
+		server.setState(state)
+		state.suppress=user["suppress"]
+		server.setState(state)
+		del userlist_state_before[state.userid]
+		self.writeStatebefore(state.userid, userlist_state_before, server.id())
 
     def userDisconnected(self, server, state, context = None): 
-	channel_before_afk=self.getStatebefore(state.userid, server.id())
 	#Only remove from afk list if not registered
-	if (state.session in channel_before_afk):
-	    del channel_before_afk[state.session]
-	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
-	    self.log().debug("Removed session %s (%s) from idle list because unregistered." % (state.session, state.name))
+	if (state.userid==-1): #User is not registered
+	    userlist_state_before=self.getStatebefore(state.userid, server.id())
+
+	    if (state.session in userlist_state_before):
+		del userlist_state_before[state.session]
+		self.writeStatebefore(state.userid, userlist_state_before, server.id())
+		self.log().debug("userDisconnected: Removed session %s (%s) from idle list because unregistered." % (state.session, state.name))
 	    
     def userStateChanged(self, server, state, context = None):
         """Move deafened users to afk channel"""
@@ -150,7 +157,7 @@ class deaftoafk(MumoModule):
 	    user["suppress"]=state.suppress
 	    userlist_state_before[tosave]=user
 	    
-	    self.log().debug("Moved user %s from channelid %s into AFK." % (state.name, state.channel)) 
+	    self.log().debug("Deafened: Moved user '%s' from channelid %s into AFK." % (state.name, state.channel)) 
 
 	    state.channel=scfg.idlechannel
 	    server.setState(state)
@@ -160,7 +167,7 @@ class deaftoafk(MumoModule):
 	if (state.selfDeaf==False) and (tosave in userlist_state_before):
 	    user=userlist_state_before[tosave]
 	    
-	    self.log().debug("Moving user %s back into channelid %s." % (state.name, user["channel"]))
+	    self.log().debug("Undeafened: Moving user '%s' back into channelid %s." % (state.name, user["channel"]))
 	    
             #Only switch back to previous channel if user is still in AFK channel.
 	    if (state.channel==scfg.idlechannel):
