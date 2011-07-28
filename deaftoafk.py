@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-# Last edited 2011-07-23
-# Version 0.0.3
+# Last edited 2011-07-28
+# Version 0.0.4
 
 # Copyright (C) 2011 Stefan Hacker <dd0t@users.sourceforge.net>
 # Copyright (C) 2011 Natenom <natenom@googlemail.com>
@@ -131,39 +131,49 @@ class deaftoafk(MumoModule):
 	    self.log().debug("Removed session %s (%s) from idle list because unregistered." % (state.session, state.name))
 	    
     def userStateChanged(self, server, state, context = None):
-        """Wer sich staub stellt, wird in AFK verschoben"""
+        """Move deafened users to afk channel"""
         try:
             scfg = getattr(self.cfg(), 'server_%d' % server.id())
         except AttributeError:
             scfg = self.cfg().all
        
-	channel_before_afk=self.getStatebefore(state.userid, server.id())
+	userlist_state_before=self.getStatebefore(state.userid, server.id())
 
 	if (state.userid==-1):
 	    tosave=state.session
 	else:
 	    tosave=state.userid
 
-        if (state.selfDeaf==True) and (tosave not in channel_before_afk):
-  	    channel_before_afk[tosave]=state.channel
-	
+        if (state.selfDeaf==True) and (tosave not in userlist_state_before):
+  	    user={}
+  	    user["channel"]=state.channel
+	    user["suppress"]=state.suppress
+	    userlist_state_before[tosave]=user
+	    
 	    self.log().debug("Moved user %s from channelid %s into AFK." % (state.name, state.channel)) 
 
 	    state.channel=scfg.idlechannel
 	    server.setState(state)
-  	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
 
-	if (state.selfDeaf==False) and (tosave in channel_before_afk):
-	    self.log().debug("Moving user %s back into channelid %s." % (state.name, channel_before_afk[tosave]))
+  	    self.writeStatebefore(state.userid, userlist_state_before, server.id())
 
+	if (state.selfDeaf==False) and (tosave in userlist_state_before):
+	    user=userlist_state_before[tosave]
+	    
+	    self.log().debug("Moving user %s back into channelid %s." % (state.name, user["channel"]))
+	    
             #Only switch back to previous channel if user is still in AFK channel.
 	    if (state.channel==scfg.idlechannel):
-		state.channel = channel_before_afk[tosave]
+		state.channel=user["channel"]
+		server.setState(state)
+		
+		#Unsuppress doesn't work if set before moved to target.
+		state.suppress=user["suppress"]
 		server.setState(state)
 	    
-            del channel_before_afk[tosave]
+            del userlist_state_before[tosave]
 
-	    self.writeStatebefore(state.userid, channel_before_afk, server.id())
+	    self.writeStatebefore(state.userid, userlist_state_before, server.id())
 
     def channelCreated(self, server, state, context = None): pass
     def channelRemoved(self, server, state, context = None): pass
