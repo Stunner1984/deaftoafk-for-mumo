@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-# Last edited 2011-07-28
-# Version 0.0.5
+# Last edited 2011-08-09
+# Version 0.0.7
 
 # Copyright (C) 2011 Stefan Hacker <dd0t@users.sourceforge.net>
 # Copyright (C) 2011 Natenom <natenom@googlemail.com>
@@ -54,7 +54,8 @@ class deaftoafk(MumoModule):
                                 lambda x: re.match('(all)|(server_\d+)', x):(                                
                                 ('idlechannel', int, 0),
                                 ('state_before_registered', str, '/tmp/deaftoafk.sbreg_'),
-                                ('state_before_unregistered', str, '/tmp/deaftoafk.sbunreg_')
+                                ('state_before_unregistered', str, '/tmp/deaftoafk.sbunreg_'),
+				('removed_channel_info', str, 'The channel you were in before afk was removed; you have been moved into the default channel.')
                                 )
                     }
     
@@ -114,6 +115,11 @@ class deaftoafk(MumoModule):
     
     def userTextMessage(self, server, user, message, current=None): pass
     def userConnected(self, server, state, context = None):
+	try:
+            scfg = getattr(self.cfg(), 'server_%d' % int(serverid))
+        except AttributeError:
+            scfg = self.cfg().all
+
 	if (state.userid>0): #User is registered
 	    userlist_state_before=self.getStatebefore(state.userid, server.id())
 	    
@@ -121,9 +127,17 @@ class deaftoafk(MumoModule):
 	    if (state.userid in userlist_state_before) and (state.deaf==False):
 		user=userlist_state_before[state.userid]
 		state.channel=user["channel"]
-		server.setState(state)
-		state.suppress=user["suppress"]
-		server.setState(state)
+
+		try:
+		    server.setState(state)
+		    state.suppress=user["suppress"]
+		    server.setState(state)
+		except self.murmur.invalidChannelException:
+		    self.log().debug("Channel where user %s was before does not exist anymore" % state.name)
+		    state.channel=int(server.getConf("defaultchannel"))
+                    server.setState(state)
+                    server.sendMessage(state.session, scfg.removed_channel_info)
+
 		del userlist_state_before[state.userid]
 		self.writeStatebefore(state.userid, userlist_state_before, server.id())
 
@@ -167,17 +181,23 @@ class deaftoafk(MumoModule):
 	if (state.selfDeaf==False) and (tosave in userlist_state_before):
 	    user=userlist_state_before[tosave]
 	    
-	    self.log().debug("Undeafened: Moving user '%s' back into channelid %s." % (state.name, user["channel"]))
-	    
             #Only switch back to previous channel if user is still in AFK channel.
 	    if (state.channel==scfg.idlechannel):
 		state.channel=user["channel"]
-		server.setState(state)
+
+		try:
+		    server.setState(state)
 		
-		#Unsuppress doesn't work if set before moved to target.
-		state.suppress=user["suppress"]
-		server.setState(state)
-	    
+		    #Unsuppress doesn't work if set before moved to target.
+		    state.suppress=user["suppress"]
+		    server.setState(state)
+		    self.log().debug("Undeafened: Moved user '%s' back into channelid %s." % (state.name, user["channel"]))
+	        except self.murmur.InvalidChannelException:
+                    self.log().debug("Channel where user %s was before does not exist anymore, will move him to default channel." % state.name)
+		    state.channel=int(server.getConf("defaultchannel"))
+		    server.setState(state)
+		    server.sendMessage(state.session, scfg.removed_channel_info)
+
             del userlist_state_before[tosave]
 
 	    self.writeStatebefore(state.userid, userlist_state_before, server.id())
