@@ -116,7 +116,7 @@ class deaftoafk(MumoModule):
     def userTextMessage(self, server, user, message, current=None): pass
     def userConnected(self, server, state, context = None):
 	try:
-            scfg = getattr(self.cfg(), 'server_%d' % int(serverid))
+            scfg = getattr(self.cfg(), 'server_%d' % int(server.id()))
         except AttributeError:
             scfg = self.cfg().all
 
