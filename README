@@ -1,2 +1,2 @@
-Dieses Modul für MuMo verschiebt staub gestellte Benutzer sofort in einen definierten AFK-Kanal und holt ihn beim entstauben wieder zurück :)
+This MuMo Module moves users, who are self muted and deafened, into a defined channel and moves them back after undeafened and unmuted.
 
