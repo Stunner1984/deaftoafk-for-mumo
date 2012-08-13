@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-
+#
 # Copyright (C) 2011 Stefan Hacker <dd0t@users.sourceforge.net>
-# Copyright (C) 2011 Natenom <natenom@googlemail.com>
+# Copyright (C) 2012 Natenom <natenom@googlemail.com>
 # All rights reserved.
 #
 # This script is based on the scripts onjoin.py, idlemove.py and seen.py
@@ -12,7 +12,7 @@
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-
+#
 # - Redistributions of source code must retain the above copyright notice,
 #   this list of conditions and the following disclaimer.
 # - Redistributions in binary form must reproduce the above copyright notice,
@@ -21,7 +21,7 @@
 # - Neither the name of the Mumble Developers nor the names of its
 #   contributors may be used to endorse or promote products derived from this
 #   software without specific prior written permission.
-
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # `AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -33,7 +33,8 @@
 # LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+#
+#
 #
 # deaftoafk.py
 # This module moves self deafened users into the afk channel and moves them back
@@ -51,8 +52,6 @@ class deaftoafk(MumoModule):
                                 ),
                                 lambda x: re.match('(all)|(server_\d+)', x):(                                
                                 ('idlechannel', int, 0),
-                                ('state_before_registered', str, '/tmp/deaftoafk.sbreg_'),
-                                ('state_before_unregistered', str, '/tmp/deaftoafk.sbunreg_'),
                                 ('filename_status', str, '/tmp/deaftoafk.status_'),
 				('removed_channel_info', str, 'The channel you were in before afk was removed; you have been moved into the default channel.')
                                 )
@@ -178,7 +177,6 @@ class deaftoafk(MumoModule):
 	else:
 	    is_registered=False
 	
-	
 	if (is_registered):
 	    #Use userid for unique users.
 	    identify_by=state.userid
@@ -252,25 +250,25 @@ class deaftoafk(MumoModule):
 
     def channelCreated(self, server, state, context = None): pass
     def channelRemoved(self, server, state, context = None):
-      '''Check if a user has been inside the removed channel; if so, add note to move him back to defaultchannel.'''
+      '''Check if a user has been inside the removed channel; if so, replace saved channel_id into defaultchannel'''
 
       statusobj=self.readState(server.id())
       userdict_reg=statusobj["registered"]
       userdict_unreg=statusobj["unregistered"]
 
       removed_channel=state.id
+      defaultchannel=int(server.getConf("defaultchannel")
       
       for k, v in userdict_reg.items():
-	  if (removed_channel==v["channel"]): #state.id is channelid of the removed channel
-	      userdict_reg[k]["channel"]=int(server.getConf("defaultchannel"))
-	      self.log().debug("Channel \"%s\" was remove where userid %s was before. Changed channel to defaultchannel." % (state.name, k))
+	  if (removed_channel==v["channel"]):
+	      userdict_reg[k]["channel"]=defaultchannel)
+	      self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
 
       for k, v in userdict_unreg.items():
 	  if (removed_channel==v["channel"]):
-	      userdict_unreg[k]["channel"]=int(server.getConf("defaultchannel"))
-	      self.log().debug("Channel \"%s\" was remove where userid %s was before. Changed channel to defaultchannel." % (state.name, k))
+	      userdict_unreg[k]["channel"]=defaultchannel)
+	      self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
 
-      #write back
       statusobj["registered"]=userdict_reg
       statusobj["unregistered"]=userdict_unreg
       self.writeState(statusobj, server.id())
