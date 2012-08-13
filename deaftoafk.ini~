@@ -7,7 +7,8 @@
 servers =
 
 [all]
-filename_status=/tmp/deaftoafk.status_
+sessions_allowed=/home/mumo/tmp/deafidle.sessions_
+state_before=/home/mumo/tmp/deafidle.statebefore_
 removed_channel_info=The channel you were in before afk has been removed; you have been moved into the default channel.
 idlechannel=0
 

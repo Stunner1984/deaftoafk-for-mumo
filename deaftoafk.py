@@ -222,8 +222,6 @@ class deaftoafk(MumoModule):
 	    else:
 		user=userdict_unreg[identify_by]
 
-	    self.log().debug("user: %s\nidentify_by: %s" % (user, identify_by))
-		
             #Only switch back to previous channel if user is still in AFK channel.
 	    if (state.channel==scfg.idlechannel):
 		state.channel=user["channel"]
@@ -257,16 +255,16 @@ class deaftoafk(MumoModule):
       userdict_unreg=statusobj["unregistered"]
 
       removed_channel=state.id
-      defaultchannel=int(server.getConf("defaultchannel")
+      defaultchannel=int(server.getConf("defaultchannel"))
       
       for k, v in userdict_reg.items():
 	  if (removed_channel==v["channel"]):
-	      userdict_reg[k]["channel"]=defaultchannel)
+	      userdict_reg[k]["channel"]=defaultchannel
 	      self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
 
       for k, v in userdict_unreg.items():
 	  if (removed_channel==v["channel"]):
-	      userdict_unreg[k]["channel"]=defaultchannel)
+	      userdict_unreg[k]["channel"]=defaultchannel
 	      self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
 
       statusobj["registered"]=userdict_reg
