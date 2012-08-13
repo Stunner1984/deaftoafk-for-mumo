@@ -148,13 +148,16 @@ class deaftoafk(MumoModule):
 
     def userDisconnected(self, server, state, context = None): 
 	'''Only remove from afk list if not registered'''
-	if not self.isregistered(state.userid):
+	if not self.isregistered(state.userid): 
 	    statusobj=self.readState(server.id())
 	    userdict_unreg=statusobj["unregistered"]
-	    del userdict_unreg[state.session]
-	    statusobj["unregistered"]=userdict_unreg
-	    self.writeState(statusobj, server.id())
-	    self.log().debug("userDisconnected: Removed session %s (%s) from idle list because unregistered." % (state.session, state.name))
+
+	    if (state.session in userdict_unreg):
+		del userdict_unreg[state.session]
+		self.log().debug("userDisconnected: Removed session %s (%s) from idle list because unregistered." % (state.session, state.name))
+
+		statusobj["unregistered"]=userdict_unreg
+		self.writeState(statusobj, server.id())
 	    
     def userStateChanged(self, server, state, context = None):
         """Move deafened users to afk channel"""
