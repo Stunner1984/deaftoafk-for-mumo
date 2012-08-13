@@ -1,2 +1,4 @@
 This MuMo Module moves users, who are self muted and deafened, into a defined channel and moves them back after undeafened and unmuted.
 
+http://wiki.natenom.name/mumble/tools/mumo/module/deaftoafk
+
