@@ -240,6 +240,12 @@ class deaftoafk(MumoModule):
 		    server.setState(state)
 		    server.sendMessage(state.session, scfg.removed_channel_info)
 
+		try:
+		    if (user["message"]=="chanremoved"):
+			server.sendMessage(state.session, scfg.removed_channel_info)
+		except KeyError:
+		    fail=1
+
             if (is_registered):
 	        del userdict_reg[identify_by]
 	    else:
@@ -263,12 +269,18 @@ class deaftoafk(MumoModule):
       for k, v in userdict_reg.items():
 	  if (removed_channel==v["channel"]):
 	      userdict_reg[k]["channel"]=defaultchannel
-	      self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
+	      #self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
+	      
+	      #set message for later
+	      userdict_reg[k]["message"]="chanremoved"
 
       for k, v in userdict_unreg.items():
 	  if (removed_channel==v["channel"]):
 	      userdict_unreg[k]["channel"]=defaultchannel
-	      self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
+	      #self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
+
+	      #set message for later
+	      userdict_reg[k]["message"]="chanremoved"
 
       statusobj["registered"]=userdict_reg
       statusobj["unregistered"]=userdict_unreg
