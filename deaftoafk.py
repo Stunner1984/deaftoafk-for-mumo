@@ -136,7 +136,7 @@ class deaftoafk(MumoModule):
 		    server.setState(state)
 		    state.suppress=user["suppress"]
 		    server.setState(state)
-		except self.murmur.invalidChannelException:
+		except self.murmur.InvalidChannelException:
 		    self.log().debug("Channel where user %s was before does not exist anymore" % state.name)
 		    state.channel=int(server.getConf("defaultchannel"))
                     server.setState(state)
