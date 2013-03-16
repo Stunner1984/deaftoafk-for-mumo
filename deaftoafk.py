@@ -100,7 +100,7 @@ class deaftoafk(MumoModule):
 	else:
 	  return True
 	  
-    def isexcluded(self, userid):
+    def isexcluded(self, server, userid):
         '''Checks if userid is member of the excluded_for_afk group in the root channel'''
         try:
             scfg = getattr(self.cfg(), 'server_%d' % int(server.id()))
@@ -183,7 +183,7 @@ class deaftoafk(MumoModule):
         except AttributeError:
             scfg = self.cfg().all
        
-        if isexcluded(state.userid):
+        if self.isexcluded(server, state.userid):
             return
             
         #default values
