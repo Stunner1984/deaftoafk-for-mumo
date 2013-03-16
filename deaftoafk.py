@@ -53,6 +53,7 @@ class deaftoafk(MumoModule):
                                 lambda x: re.match('(all)|(server_\d+)', x):(                                
                                 ('idlechannel', int, 0),
                                 ('filename_status', str, '/tmp/deaftoafk.status_'),
+                                ('excluded_for_afk', str, 'excludedafk'),
 				('removed_channel_info', str, 'The channel you were in before afk was removed; you have been moved into the default channel.')
                                 )
                     }
@@ -98,6 +99,22 @@ class deaftoafk(MumoModule):
 	  return False
 	else:
 	  return True
+	  
+    def isexcluded(self, userid):
+        '''Checks if userid is member of the excluded_for_afk group in the root channel'''
+        try:
+            scfg = getattr(self.cfg(), 'server_%d' % int(server.id()))
+        except AttributeError:
+            scfg = self.cfg().all
+                
+        ACL=server.getACL(0)
+        
+        for group in ACL[1]:
+            if (group.name == scfg.excluded_for_afk):
+                if (userid in group.members):
+                    return True
+                    
+        return False
     
     def connected(self):
         manager = self.manager()
@@ -166,10 +183,12 @@ class deaftoafk(MumoModule):
         except AttributeError:
             scfg = self.cfg().all
        
+        if isexcluded(state.userid):
+            return
+            
         #default values
         is_new=False 
         is_in_and_nodeaf=False
-       
        
 	statusobj=self.readState(server.id())
 	userdict_reg=statusobj["registered"]
