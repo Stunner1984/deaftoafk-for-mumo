@@ -236,7 +236,7 @@ class deaftoafk(MumoModule):
 
 	    statusobj["registered"]=userdict_reg
 	    statusobj["unregistered"]=userdict_unreg
-  	    self.writeState(statusobj, server.id())
+	    self.writeState(statusobj, server.id())
 
 	if (is_in_and_nodeaf): #User is in one of the lists and is not deaf anymore.
 	    if (is_registered):
