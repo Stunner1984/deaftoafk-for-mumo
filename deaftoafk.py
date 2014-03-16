@@ -181,7 +181,7 @@ class deaftoafk(MumoModule):
 	    if (state.selfDeaf == False) and (identify_by in userdict_unreg):
 	        is_in_and_nodeaf = True
 
-        if (is_new):
+        if (is_new and state.channel != scfg.idlechannel):
 	    if (is_registered):
 	        userdict_reg[identify_by] = {}
 	        userdict_reg[identify_by]["channel"] = state.channel
@@ -226,10 +226,10 @@ class deaftoafk(MumoModule):
 		except KeyError:
 		    pass
 
-            if (is_registered):
-	        del userdict_reg[identify_by]
-	    else:
-		del userdict_unreg[identify_by]
+                if (is_registered):
+	            del userdict_reg[identify_by]
+	        else:
+		    del userdict_unreg[identify_by]
             
 	    self.data[server.id][0] = userdict_reg
 	    self.data[server.id][1] = userdict_unreg
@@ -263,4 +263,4 @@ class deaftoafk(MumoModule):
       self.data[server.id][0] = userdict_reg
       self.data[server.id][1] = userdict_unreg
       
-    def channelStateChanged(self, server, state, context = None): pass     
+    def channelStateChanged(self, server, state, context = None): pass
