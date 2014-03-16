@@ -2,12 +2,8 @@
 # -*- coding: utf-8
 #
 # Copyright (C) 2011 Stefan Hacker <dd0t@users.sourceforge.net>
-# Copyright (C) 2012 Natenom <natenom@googlemail.com>
+# Copyright (C) 2012-2014 Natenom <natenom@googlemail.com>
 # All rights reserved.
-#
-# This script is based on the scripts onjoin.py, idlemove.py and seen.py
-# (made by dd0t) from the Mumble Moderator project , available at
-# http://gitorious.org/mumble-scripts/mumo
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -34,8 +30,6 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-#
-#
 # deaftoafk.py
 # This module moves self deafened users into the afk channel and moves them back
 # into their previous channel when they undeaf themselfes.
@@ -43,7 +37,6 @@
 
 from mumo_module import (commaSeperatedIntegers,
                          MumoModule)
-import pickle
 import re
 
 class deaftoafk(MumoModule):
@@ -52,7 +45,6 @@ class deaftoafk(MumoModule):
                                 ),
                                 lambda x: re.match('(all)|(server_\d+)', x):(                                
                                 ('idlechannel', int, 0),
-                                ('filename_status', str, '/tmp/deaftoafk.status_'),
                                 ('excluded_for_afk', str, 'excludedafk'),
 				('removed_channel_info', str, 'The channel you were in before afk was removed; you have been moved into the default channel.')
                                 )
@@ -61,39 +53,8 @@ class deaftoafk(MumoModule):
     def __init__(self, name, manager, configuration = None):
         MumoModule.__init__(self, name, manager, configuration)
         self.murmur = manager.getMurmurModule()
+        self.data = {}
 	
-    def writeState(self, statusobj, serverid):
-        try:
-            scfg = getattr(self.cfg(), 'server_%d' % int(serverid))
-        except AttributeError:
-            scfg = self.cfg().all
-
-        filename=scfg.filename_status
-
-	filehandle = open(filename+str(serverid), 'wb')
-	pickle.dump(statusobj, filehandle)
-	filehandle.close()
-    
-    def readState(self, serverid):
-	try:
-            scfg = getattr(self.cfg(), 'server_%d' % int(serverid))
-        except AttributeError:
-            scfg = self.cfg().all
-	
-	filename=scfg.filename_status
-	
-	try:
-	    filehandle = open(filename+str(serverid), 'rb')
-	    statusobj=pickle.load(filehandle)
-	    filehandle.close()
-	except:
-	    statusobj={}
-	    dict_reg={}
-	    dict_unreg={}
-	    statusobj["registered"]=dict_reg
-	    statusobj["unregistered"]=dict_unreg
-	return statusobj
-    
     def isregistered(self, userid):
         if (userid==-1):
 	  return False
@@ -140,9 +101,7 @@ class deaftoafk(MumoModule):
             scfg = self.cfg().all
 
 	if self.isregistered(state.userid): #User is registered
-	    statusobj=self.readState(server.id())
-	    
-	    userdict_reg=statusobj["registered"]
+	    userdict_reg=self.data[server.id][0]
 	    
 	    #If user is registered and in afk list and not deaf: move back to previous channel and remove user from afk list.
 	    if (state.userid in userdict_reg) and (state.deaf==False):
@@ -160,21 +119,18 @@ class deaftoafk(MumoModule):
                     server.sendMessage(state.session, scfg.removed_channel_info)
 
 		del userdict_reg[state.userid]
-		statusobj["registered"]=userdict_reg
-		self.writeState(statusobj, server.id())
+		self.data[server.id][0]=userdict_reg
 
     def userDisconnected(self, server, state, context = None): 
 	'''Only remove from afk list if not registered'''
 	if not self.isregistered(state.userid): 
-	    statusobj=self.readState(server.id())
-	    userdict_unreg=statusobj["unregistered"]
+	    userdict_unreg=self.data[server.id][1]
 
-	    if (state.session in userdict_unreg):
+	    if state.session in userdict_unreg:
 		del userdict_unreg[state.session]
 		self.log().debug("userDisconnected: Removed session %s (%s) from idle list because unregistered." % (state.session, state.name))
 
-		statusobj["unregistered"]=userdict_unreg
-		self.writeState(statusobj, server.id())
+		self.data[server.id][1]=userdict_unreg
 	    
     def userStateChanged(self, server, state, context = None):
         """Move deafened users to afk channel"""
@@ -186,13 +142,19 @@ class deaftoafk(MumoModule):
         if self.isexcluded(server, state.userid):
             return
             
+        if server.id not in self.data:
+	    self.data[server.id] = []
+	    dict_reg={}
+	    dict_unreg={}
+	    self.data[server.id].append(dict_reg) #Accessible through self.data[sid][0]
+	    self.data[server.id].append(dict_unreg) #Accessible through self.data[sid][1]
+	    
         #default values
         is_new=False 
         is_in_and_nodeaf=False
        
-	statusobj=self.readState(server.id())
-	userdict_reg=statusobj["registered"]
-	userdict_unreg=statusobj["unregistered"]
+	userdict_reg=self.data[server.id][0]
+	userdict_unreg=self.data[server.id][1]
 	
 	if self.isregistered(state.userid):
 	    is_registered=True
@@ -234,10 +196,9 @@ class deaftoafk(MumoModule):
 	    state.channel=scfg.idlechannel
 	    server.setState(state)
 
-	    statusobj["registered"]=userdict_reg
-	    statusobj["unregistered"]=userdict_unreg
-	    self.writeState(statusobj, server.id())
-
+	    self.data[server.id][0]=userdict_reg
+	    self.data[server.id][1]=userdict_unreg
+	    
 	if (is_in_and_nodeaf): #User is in one of the lists and is not deaf anymore.
 	    if (is_registered):
 	        user=userdict_reg[identify_by]
@@ -270,17 +231,15 @@ class deaftoafk(MumoModule):
 	    else:
 		del userdict_unreg[identify_by]
             
-	    statusobj["registered"]=userdict_reg
-	    statusobj["unregistered"]=userdict_unreg
-  	    self.writeState(statusobj, server.id())
+	    self.data[server.id][0]=userdict_reg
+	    self.data[server.id][1]=userdict_unreg
 
     def channelCreated(self, server, state, context = None): pass
     def channelRemoved(self, server, state, context = None):
       '''Check if a user has been inside the removed channel; if so, replace saved channel_id into defaultchannel'''
 
-      statusobj=self.readState(server.id())
-      userdict_reg=statusobj["registered"]
-      userdict_unreg=statusobj["unregistered"]
+      userdict_reg=self.data[server.id][0]
+      userdict_unreg=self.data[server.id][1]
 
       removed_channel=state.id
       defaultchannel=int(server.getConf("defaultchannel"))
@@ -301,8 +260,7 @@ class deaftoafk(MumoModule):
 	      #set message for later
 	      userdict_reg[k]["message"]="chanremoved"
 
-      statusobj["registered"]=userdict_reg
-      statusobj["unregistered"]=userdict_unreg
-      self.writeState(statusobj, server.id())
+      self.data[server.id][0]=userdict_reg
+      self.data[server.id][1]=userdict_unreg
       
     def channelStateChanged(self, server, state, context = None): pass     
