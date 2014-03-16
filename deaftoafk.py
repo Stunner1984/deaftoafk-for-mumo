@@ -56,7 +56,7 @@ class deaftoafk(MumoModule):
         self.data = {}
 	
     def isregistered(self, userid):
-        if (userid==-1):
+        if (userid == -1):
 	  return False
 	else:
 	  return True
@@ -68,7 +68,7 @@ class deaftoafk(MumoModule):
         except AttributeError:
             scfg = self.cfg().all
                 
-        ACL=server.getACL(0)
+        ACL = server.getACL(0)
         
         for group in ACL[1]:
             if (group.name == scfg.excluded_for_afk):
@@ -101,36 +101,36 @@ class deaftoafk(MumoModule):
             scfg = self.cfg().all
 
 	if self.isregistered(state.userid): #User is registered
-	    userdict_reg=self.data[server.id][0]
+	    userdict_reg = self.data[server.id][0]
 	    
 	    #If user is registered and in afk list and not deaf: move back to previous channel and remove user from afk list.
-	    if (state.userid in userdict_reg) and (state.deaf==False):
-		user=userdict_reg[state.userid]
-		state.channel=user["channel"]
+	    if (state.userid in userdict_reg) and (state.deaf == False):
+		user = userdict_reg[state.userid]
+		state.channel = user["channel"]
 
 		try:
 		    server.setState(state)
-		    state.suppress=user["suppress"]
+		    state.suppress = user["suppress"]
 		    server.setState(state)
 		except self.murmur.InvalidChannelException:
 		    self.log().debug("Channel where user %s was before does not exist anymore" % state.name)
-		    state.channel=int(server.getConf("defaultchannel"))
+		    state.channel = int(server.getConf("defaultchannel"))
                     server.setState(state)
                     server.sendMessage(state.session, scfg.removed_channel_info)
 
 		del userdict_reg[state.userid]
-		self.data[server.id][0]=userdict_reg
+		self.data[server.id][0] = userdict_reg
 
     def userDisconnected(self, server, state, context = None): 
 	'''Only remove from afk list if not registered'''
 	if not self.isregistered(state.userid): 
-	    userdict_unreg=self.data[server.id][1]
+	    userdict_unreg = self.data[server.id][1]
 
 	    if state.session in userdict_unreg:
 		del userdict_unreg[state.session]
 		self.log().debug("userDisconnected: Removed session %s (%s) from idle list because unregistered." % (state.session, state.name))
 
-		self.data[server.id][1]=userdict_unreg
+		self.data[server.id][1] = userdict_unreg
 	    
     def userStateChanged(self, server, state, context = None):
         """Move deafened users to afk channel"""
@@ -144,123 +144,123 @@ class deaftoafk(MumoModule):
             
         if server.id not in self.data:
 	    self.data[server.id] = []
-	    dict_reg={}
-	    dict_unreg={}
+	    dict_reg = {}
+	    dict_unreg = {}
 	    self.data[server.id].append(dict_reg) #Accessible through self.data[sid][0]
 	    self.data[server.id].append(dict_unreg) #Accessible through self.data[sid][1]
 	    
         #default values
-        is_new=False 
-        is_in_and_nodeaf=False
+        is_new = False 
+        is_in_and_nodeaf = False
        
-	userdict_reg=self.data[server.id][0]
-	userdict_unreg=self.data[server.id][1]
+	userdict_reg = self.data[server.id][0]
+	userdict_unreg = self.data[server.id][1]
 	
 	if self.isregistered(state.userid):
-	    is_registered=True
+	    is_registered = True
 	else:
-	    is_registered=False
+	    is_registered = False
 	
 	if (is_registered):
 	    #Use userid for unique users.
-	    identify_by=state.userid
+	    identify_by = state.userid
 	    
-	    if (state.selfDeaf==True) and (identify_by not in userdict_reg):
-		is_new=True
+	    if (state.selfDeaf == True) and (identify_by not in userdict_reg):
+		is_new = True
 		
-	    if (state.selfDeaf==False) and (identify_by in userdict_reg):
-	        is_in_and_nodeaf=True
+	    if (state.selfDeaf == False) and (identify_by in userdict_reg):
+	        is_in_and_nodeaf = True
 
 	else:
 	    #Use session id for unique users.
-	    identify_by=state.session
+	    identify_by = state.session
 	    	    
-	    if (state.selfDeaf==True) and (identify_by not in userdict_unreg):
-	        is_new=True
+	    if (state.selfDeaf == True) and (identify_by not in userdict_unreg):
+	        is_new = True
 	        
-	    if (state.selfDeaf==False) and (identify_by in userdict_unreg):
-	        is_in_and_nodeaf=True
+	    if (state.selfDeaf == False) and (identify_by in userdict_unreg):
+	        is_in_and_nodeaf = True
 
         if (is_new):
 	    if (is_registered):
-	        userdict_reg[identify_by]={}
-	        userdict_reg[identify_by]["channel"]=state.channel
-		userdict_reg[identify_by]["suppress"]=state.suppress
+	        userdict_reg[identify_by] = {}
+	        userdict_reg[identify_by]["channel"] = state.channel
+		userdict_reg[identify_by]["suppress"] = state.suppress
 	    else:
-	        userdict_unreg[identify_by]={}
-	        userdict_unreg[identify_by]["channel"]=state.channel
-		userdict_unreg[identify_by]["suppress"]=state.suppress
+	        userdict_unreg[identify_by] = {}
+	        userdict_unreg[identify_by]["channel"] = state.channel
+		userdict_unreg[identify_by]["suppress"] = state.suppress
 	    
 	    self.log().debug("Deafened: Moved user '%s' from channelid %s into AFK." % (state.name, state.channel)) 
 
-	    state.channel=scfg.idlechannel
+	    state.channel = scfg.idlechannel
 	    server.setState(state)
 
-	    self.data[server.id][0]=userdict_reg
-	    self.data[server.id][1]=userdict_unreg
+	    self.data[server.id][0] = userdict_reg
+	    self.data[server.id][1] = userdict_unreg
 	    
 	if (is_in_and_nodeaf): #User is in one of the lists and is not deaf anymore.
 	    if (is_registered):
-	        user=userdict_reg[identify_by]
+	        user = userdict_reg[identify_by]
 	    else:
-		user=userdict_unreg[identify_by]
+		user = userdict_unreg[identify_by]
 
             #Only switch back to previous channel if user is still in AFK channel.
-	    if (state.channel==scfg.idlechannel):
-		state.channel=user["channel"]
+	    if (state.channel == scfg.idlechannel):
+		state.channel = user["channel"]
 
 		try:
 		    server.setState(state)
-		    state.suppress=user["suppress"] #Unsuppress state must be set after moving user back to his channel
+		    state.suppress = user["suppress"] #Unsuppress state must be set after moving user back to his channel
 		    server.setState(state)
 		    self.log().debug("Undeafened: Moved user '%s' back into channelid %s." % (state.name, user["channel"]))
 	        except self.murmur.InvalidChannelException:
                     self.log().debug("Channel where user %s was before does not exist anymore, will move him to default channel." % state.name)
-		    state.channel=int(server.getConf("defaultchannel"))
+		    state.channel = int(server.getConf("defaultchannel"))
 		    server.setState(state)
 		    server.sendMessage(state.session, scfg.removed_channel_info)
 
 		try:
-		    if (user["message"]=="chanremoved"):
+		    if (user["message"] == "chanremoved"):
 			server.sendMessage(state.session, scfg.removed_channel_info)
 		except KeyError:
-		    fail=1
+		    fail = 1
 
             if (is_registered):
 	        del userdict_reg[identify_by]
 	    else:
 		del userdict_unreg[identify_by]
             
-	    self.data[server.id][0]=userdict_reg
-	    self.data[server.id][1]=userdict_unreg
+	    self.data[server.id][0] = userdict_reg
+	    self.data[server.id][1] = userdict_unreg
 
     def channelCreated(self, server, state, context = None): pass
     def channelRemoved(self, server, state, context = None):
       '''Check if a user has been inside the removed channel; if so, replace saved channel_id into defaultchannel'''
 
-      userdict_reg=self.data[server.id][0]
-      userdict_unreg=self.data[server.id][1]
+      userdict_reg = self.data[server.id][0]
+      userdict_unreg = self.data[server.id][1]
 
-      removed_channel=state.id
-      defaultchannel=int(server.getConf("defaultchannel"))
+      removed_channel = state.id
+      defaultchannel = int(server.getConf("defaultchannel"))
       
       for k, v in userdict_reg.items():
-	  if (removed_channel==v["channel"]):
-	      userdict_reg[k]["channel"]=defaultchannel
+	  if (removed_channel == v["channel"]):
+	      userdict_reg[k]["channel"] = defaultchannel
 	      #self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
 	      
 	      #set message for later
-	      userdict_reg[k]["message"]="chanremoved"
+	      userdict_reg[k]["message"] = "chanremoved"
 
       for k, v in userdict_unreg.items():
-	  if (removed_channel==v["channel"]):
-	      userdict_unreg[k]["channel"]=defaultchannel
+	  if (removed_channel == v["channel"]):
+	      userdict_unreg[k]["channel"] = defaultchannel
 	      #self.log().debug("Userid \"%s\" was in removed channel_id '%s'. Rewrite saved channel_id to defaultchannel" % (state.name, k))
 
 	      #set message for later
-	      userdict_reg[k]["message"]="chanremoved"
+	      userdict_reg[k]["message"] = "chanremoved"
 
-      self.data[server.id][0]=userdict_reg
-      self.data[server.id][1]=userdict_unreg
+      self.data[server.id][0] = userdict_reg
+      self.data[server.id][1] = userdict_unreg
       
     def channelStateChanged(self, server, state, context = None): pass     
