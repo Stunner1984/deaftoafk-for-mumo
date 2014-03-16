@@ -224,7 +224,7 @@ class deaftoafk(MumoModule):
 		    if (user["message"] == "chanremoved"):
 			server.sendMessage(state.session, scfg.removed_channel_info)
 		except KeyError:
-		    fail = 1
+		    pass
 
             if (is_registered):
 	        del userdict_reg[identify_by]
