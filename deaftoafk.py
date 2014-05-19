@@ -226,10 +226,10 @@ class deaftoafk(MumoModule):
 		except KeyError:
 		    pass
 
-                if (is_registered):
-	            del userdict_reg[identify_by]
-	        else:
-		    del userdict_unreg[identify_by]
+            if (is_registered):
+	        del userdict_reg[identify_by]
+	    else:
+		del userdict_unreg[identify_by]
             
 	    self.data[server.id][0] = userdict_reg
 	    self.data[server.id][1] = userdict_unreg
